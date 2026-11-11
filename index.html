@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rescorer</title>
+<meta name="description" content="Line up a YouTube scene with a YouTube song and mix their audio live.">
+<style>
+  :root{
+    --bg:#0e1014; --panel:#161920; --panel2:#1d212a; --line:#2a2f3a;
+    --text:#e8eaf0; --dim:#8b92a3;
+    --scene:#58cfe3; --song:#f2a93b; --rec:#ff4f5e; --ok:#5fd38d;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+  button,input{font:inherit;color:inherit}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .logo{font-weight:800;letter-spacing:.04em;font-size:16px;margin-right:6px}
+  .logo span{color:var(--song)}
+  .url{flex:1 1 260px;display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 8px}
+  .url b{font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  .url.scene b{color:var(--scene)} .url.song b{color:var(--song)}
+  .url input{flex:1;min-width:0;background:none;border:0;outline:0;padding:9px 2px}
+  button{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+  button:hover{border-color:#3d4452}
+  button.primary{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600}
+  button.on{border-color:var(--ok);color:var(--ok)}
+  button.rec.on{background:var(--rec);border-color:var(--rec);color:#fff;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.7}}
+  main{padding:16px;max-width:1400px;margin:0 auto;display:grid;gap:14px}
+  .stage{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(280px,1fr);gap:14px}
+  .video{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  .video iframe,.video>div{position:absolute;inset:0;width:100%;height:100%}
+  .video .empty{display:grid;place-items:center;color:var(--dim);font-size:13px;text-align:center;padding:12px}
+  .tag{position:absolute;z-index:2;top:8px;left:8px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#000a;pointer-events:none}
+  .tag.scene{color:var(--scene)} .tag.song{color:var(--song)}
+  .side{display:grid;gap:14px;align-content:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .card h3{margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .ch{display:grid;grid-template-columns:52px 1fr 40px auto;gap:8px;align-items:center;margin-bottom:10px}
+  .ch label{font-weight:600}
+  .ch.scene label{color:var(--scene)} .ch.song label{color:var(--song)}
+  .ch output{font-family:var(--mono);text-align:right}
+  input[type=range]{width:100%;height:28px;cursor:pointer}
+  .ch.scene input{accent-color:var(--scene)} .ch.song input{accent-color:var(--song)}
+  .mute.on{border-color:var(--rec);color:var(--rec)}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .transport{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .transport .play{min-width:92px}
+  .clock{font-family:var(--mono);font-size:13px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap}
+  .clock b{font-weight:500}
+  .clock .s b{color:var(--scene)} .clock .g b{color:var(--song)}
+  .spacer{flex:1}
+  canvas{display:block;width:100%;height:110px;border-radius:8px;background:var(--bg);border:1px solid var(--line);cursor:crosshair;touch-action:none}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--dim);margin-top:6px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:3px;vertical-align:middle;margin-right:4px}
+  .sync{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .cue{display:grid;gap:6px}
+  .cue .lbl{font-size:12px;color:var(--dim)}
+  .cue .lbl b{font-weight:600}
+  .cue.scene .lbl b{color:var(--scene)} .cue.song .lbl b{color:var(--song)}
+  .cue input{width:110px;font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+  .nudge{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .nudge .off{font-family:var(--mono);color:var(--dim);margin-left:auto}
+  .num{width:64px;font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+  .help{color:var(--dim);font-size:12px;line-height:1.7}
+  kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--panel2);color:var(--text)}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 14px;border-radius:8px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media (max-width:860px){
+    .stage{grid-template-columns:1fr}
+    .sync{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">RE<span>SCORER</span></div>
+  <label class="url scene"><b>Scene</b><input id="sceneUrl" placeholder="YouTube link to the scene" spellcheck="false"></label>
+  <label class="url song"><b>Song</b><input id="songUrl" placeholder="YouTube link to the song" spellcheck="false"></label>
+  <button class="primary" id="loadBtn">Load</button>
+  <button id="shareBtn" title="Copy a link that reopens this exact setup">Copy link</button>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="video"><span class="tag scene">Scene</span><div id="scenePlayer" class="empty">Paste a scene link above and hit Load</div></div>
+    <div class="side">
+      <div class="video"><span class="tag song">Song</span><div id="songPlayer" class="empty">Paste a song link above</div></div>
+      <div class="card">
+        <h3>Live mix</h3>
+        <div class="ch scene">
+          <label for="sv">Scene</label>
+          <input type="range" id="sv" min="0" max="100" step="1">
+          <output id="svOut"></output>
+          <button class="mute" id="sm" title="Mute scene (1)">M</button>
+        </div>
+        <div class="ch song">
+          <label for="mv">Song</label>
+          <input type="range" id="mv" min="0" max="100" step="1">
+          <output id="mvOut"></output>
+          <button class="mute" id="mm" title="Mute song (2)">M</button>
+        </div>
+        <div class="row">
+          <button class="rec" id="recBtn" title="Record your volume moves (R)">● Record moves</button>
+          <button id="autoBtn" title="Replay recorded moves while playing">Replay moves</button>
+          <button id="clearBtn">Clear</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="transport">
+      <button class="primary play" id="playBtn">▶ Play</button>
+      <button id="cueBtn" title="Jump to a few seconds before the cue and play (C)">⏮ Play from cue</button>
+      <button id="linkBtn" title="When linked, the song follows the scene (L)">🔗 Linked</button>
+      <div class="spacer"></div>
+      <div class="clock">
+        <span class="s">scene <b id="sceneClock">0:00.00</b></span>
+        <span class="g">song <b id="songClock">0:00.00</b></span>
+      </div>
+    </div>
+    <div style="height:10px"></div>
+    <canvas id="tl"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--scene)"></i>scene volume</span>
+      <span><i style="background:var(--song)"></i>song volume</span>
+      <span><i style="background:#ffffff22;height:10px"></i>where the song plays</span>
+      <span><i style="background:#fff;width:2px;height:10px"></i>cue</span>
+      <span>click / drag to scrub</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Line it up</h3>
+    <div class="sync">
+      <div class="cue scene">
+        <div class="lbl"><b>Scene cue</b> — the moment in the scene the music should hit</div>
+        <div class="row"><input id="sceneCue" value="0:00.00"><button id="markScene">Mark scene now</button></div>
+      </div>
+      <div class="cue song">
+        <div class="lbl"><b>Song cue</b> — the moment in the song that should land there</div>
+        <div class="row"><input id="songCue" value="0:00.00"><button id="markSong">Mark song now</button></div>
+      </div>
+      <div class="nudge">
+        <span class="help">Nudge the hit:</span>
+        <button data-n="-0.5">◀◀ 0.5s earlier</button>
+        <button data-n="-0.05">◀ 0.05s</button>
+        <button data-n="0.05">0.05s ▶</button>
+        <button data-n="0.5">0.5s later ▶▶</button>
+        <span class="help">Pre-roll</span><input class="num" id="preroll" type="number" min="0" step="0.5">
+        <span class="off" id="offOut"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="help">
+    <b style="color:var(--text)">How to line up:</b> Unlink, scrub the scene to the hit moment → <b>Mark scene now</b>.
+    Scrub the song to its hit → <b>Mark song now</b>. Link again and hit <b>Play from cue</b>. Nudge until it feels right, then ride the faders.
+    Hit <b>Record moves</b> to capture your fader rides — they replay on the next pass, and recording over a section only replaces that section.
+    <br>
+    <kbd>Space</kbd> play/pause · <kbd>C</kbd> play from cue · <kbd>Q</kbd>/<kbd>A</kbd> scene vol · <kbd>W</kbd>/<kbd>S</kbd> song vol ·
+    <kbd>1</kbd>/<kbd>2</kbd> mute scene/song · <kbd>←</kbd>/<kbd>→</kbd> nudge (hold <kbd>Shift</kbd> for 0.5s) · <kbd>R</kbd> record · <kbd>L</kbd> link
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // ---------- state ----------
+  const S = {
+    sceneId: '', songId: '', sceneCue: 0, songCue: 0, preroll: 3,
+    sv: 35, mv: 85, sm: false, mm: false,
+    linked: true, autoOn: true,
+    auto: [] // [{t, sv, mv, sm, mm}] sorted by scene time
+  };
+  let scene = null, song = null, sceneReady = false, songReady = false;
+  let rec = null, lastSeek = 0, forceSync = false;
+  const offset = () => S.songCue - S.sceneCue;
+
+  // ---------- helpers ----------
+  function fmt(t) {
+    if (!isFinite(t)) t = 0;
+    const neg = t < 0; t = Math.abs(t);
+    const m = Math.floor(t / 60), s = t - m * 60;
+    return (neg ? '-' : '') + m + ':' + (s < 10 ? '0' : '') + s.toFixed(2);
+  }
+  function parseTime(str) {
+    str = String(str).trim(); if (!str) return NaN;
+    const parts = str.split(':').map(Number);
+    if (parts.some(isNaN)) return NaN;
+    return parts.reduce((a, p) => a * 60 + p, 0);
+  }
+  function parseYT(url) {
+    url = (url || '').trim();
+    if (/^[\w-]{11}$/.test(url)) return { id: url, t: 0 };
+    try {
+      const u = new URL(url.startsWith('http') ? url : 'https://' + url);
+      let id = null;
+      if (u.hostname.includes('youtu.be')) id = u.pathname.slice(1, 12);
+      else if (u.searchParams.get('v')) id = u.searchParams.get('v');
+      else { const m = u.pathname.match(/\/(embed|shorts|live|v)\/([\w-]{11})/); if (m) id = m[2]; }
+      const ts = u.searchParams.get('t') || u.searchParams.get('start') || '';
+      let t = 0;
+      if (/^\d+(\.\d+)?s?$/.test(ts)) t = parseFloat(ts);
+      else { const m = ts.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/); if (m) t = (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0); }
+      return id && /^[\w-]{11}$/.test(id) ? { id, t } : null;
+    } catch { return null; }
+  }
+  let toastTimer;
+  function toast(msg) {
+    const el = $('toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+  }
+
+  // ---------- persistence ----------
+  function pack() {
+    return {
+      a: S.sceneId, b: S.songId, c: +S.sceneCue.toFixed(3), d: +S.songCue.toFixed(3), p: S.preroll,
+      v: [S.sv, S.mv, +S.sm, +S.mm], l: +S.linked, o: +S.autoOn,
+      x: S.auto.map(p => [p.t, p.sv, p.mv, (+p.sm) | (+p.mm << 1)])
+    };
+  }
+  function unpack(o) {
+    if (!o) return;
+    S.sceneId = o.a || ''; S.songId = o.b || '';
+    S.sceneCue = +o.c || 0; S.songCue = +o.d || 0; S.preroll = o.p ?? 3;
+    if (o.v) [S.sv, S.mv, S.sm, S.mm] = [o.v[0], o.v[1], !!o.v[2], !!o.v[3]];
+    S.linked = o.l !== 0; S.autoOn = o.o !== 0;
+    S.auto = (o.x || []).map(a => ({ t: a[0], sv: a[1], mv: a[2], sm: !!(a[3] & 1), mm: !!(a[3] & 2) }));
+  }
+  const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
+  let saveTimer;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const json = JSON.stringify(pack());
+      try { localStorage.setItem('rescorer', json); } catch {}
+      history.replaceState(null, '', '#' + b64e(json));
+    }, 300);
+  }
+  function restore() {
+    try {
+      if (location.hash.length > 1) return unpack(JSON.parse(b64d(location.hash.slice(1))));
+    } catch {}
+    try { unpack(JSON.parse(localStorage.getItem('rescorer'))); } catch {}
+  }
+
+  // ---------- YouTube ----------
+  let ytReady = false; const ytQueue = [];
+  window.onYouTubeIframeAPIReady = () => { ytReady = true; ytQueue.splice(0).forEach(f => f()); };
+  const whenYT = f => ytReady ? f() : ytQueue.push(f);
+  const tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+
+  function loadScene(id) {
+    S.sceneId = id;
+    whenYT(() => {
+      if (scene && sceneReady) { scene.cueVideoById(id); applyVolumes(); return; }
+      $('scenePlayer').textContent = '';
+      scene = new YT.Player('scenePlayer', {
+        videoId: id, playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+        events: { onReady: () => { sceneReady = true; applyVolumes(); }, onStateChange: () => { updatePlayBtn(); tick(); } }
+      });
+    });
+  }
+  function loadSong(id) {
+    S.songId = id;
+    whenYT(() => {
+      if (song && songReady) { song.cueVideoById(id); applyVolumes(); return; }
+      $('songPlayer').textContent = '';
+      song = new YT.Player('songPlayer', {
+        videoId: id, playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+        events: { onReady: () => { songReady = true; applyVolumes(); } }
+      });
+    });
+  }
+
+  // ---------- volumes (live) ----------
+  const applied = { sv: -1, mv: -1, sm: null, mm: null };
+  function applyVolumes() {
+    if (sceneReady) {
+      if (applied.sv !== S.sv) { scene.setVolume(S.sv); applied.sv = S.sv; }
+      if (applied.sm !== S.sm) { S.sm ? scene.mute() : scene.unMute(); applied.sm = S.sm; }
+    }
+    if (songReady) {
+      if (applied.mv !== S.mv) { song.setVolume(S.mv); applied.mv = S.mv; }
+      if (applied.mm !== S.mm) { S.mm ? song.mute() : song.unMute(); applied.mm = S.mm; }
+    }
+    renderMix();
+  }
+  function renderMix() {
+    $('sv').value = S.sv; $('svOut').textContent = S.sv;
+    $('mv').value = S.mv; $('mvOut').textContent = S.mv;
+    $('sm').classList.toggle('on', S.sm); $('mm').classList.toggle('on', S.mm);
+  }
+  function setVol(key, val) {
+    S[key] = Math.max(0, Math.min(100, Math.round(val)));
+    applyVolumes(); save();
+  }
+  function toggleMute(key) { S[key] = !S[key]; applyVolumes(); save(); }
+
+  // ---------- automation ----------
+  function valueAt(list, t) {
+    let lo = 0, hi = list.length - 1, ans = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (list[mid].t <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+    return ans < 0 ? null : list[ans];
+  }
+  function commitChunk() {
+    const c = rec && rec.chunk; if (!c) return;
+    rec.chunk = null;
+    if (!c.pts.length) return;
+    const end = +(c.last + 0.1).toFixed(2);
+    const restoreAfter = valueAt(S.auto, end);
+    const kept = S.auto.filter(p => p.t < c.start || p.t > end);
+    if (restoreAfter && !kept.some(p => Math.abs(p.t - end) < 0.05)) kept.push({ ...restoreAfter, t: end });
+    S.auto = kept.concat(c.pts).sort((a, b) => a.t - b.t);
+    save();
+  }
+  function setRecording(on) {
+    if (!on) { commitChunk(); rec = null; }
+    else rec = { chunk: null };
+    $('recBtn').classList.toggle('on', !!rec);
+  }
+
+  // ---------- the heartbeat: automation + sync ----------
+  function tick() {
+    if (!sceneReady) return;
+    const ss = scene.getPlayerState(), t = scene.getCurrentTime() || 0;
+    const playing = ss === 1;
+
+    if (rec) {
+      if (playing) {
+        const c = rec.chunk;
+        if (c && (t < c.last - 0.05 || t - c.last > 1.5)) commitChunk(); // scrubbed while recording
+        if (!rec.chunk) rec.chunk = { start: +t.toFixed(2), last: t, pts: [] };
+        const ch = rec.chunk, prev = ch.pts[ch.pts.length - 1];
+        const p = { t: +t.toFixed(2), sv: S.sv, mv: S.mv, sm: S.sm, mm: S.mm };
+        if (!prev || prev.sv !== p.sv || prev.mv !== p.mv || prev.sm !== p.sm || prev.mm !== p.mm) ch.pts.push(p);
+        ch.last = t;
+      } else commitChunk();
+    } else if (S.autoOn && playing && S.auto.length) {
+      const p = valueAt(S.auto, t);
+      if (p && (p.sv !== S.sv || p.mv !== S.mv || p.sm !== S.sm || p.mm !== S.mm)) {
+        S.sv = p.sv; S.mv = p.mv; S.sm = p.sm; S.mm = p.mm; applyVolumes();
+      }
+    }
+
+    if (!songReady || !S.linked) return;
+    const gs = song.getPlayerState(), target = t + offset();
+    const dur = song.getDuration() || Infinity, now = performance.now();
+    if (playing) {
+      if (target < 0 || target >= dur - 0.2) { if (gs === 1 || gs === 3) song.pauseVideo(); }
+      else if (gs !== 1 && gs !== 3) {
+        if (now - lastSeek > 400) { song.seekTo(target, true); song.playVideo(); lastSeek = now; forceSync = false; }
+      } else if (gs === 1) {
+        const drift = Math.abs(song.getCurrentTime() - target);
+        if ((forceSync && drift > 0.02) || (now - lastSeek > 1200 && drift > 0.25)) { song.seekTo(target, true); lastSeek = now; }
+        forceSync = false;
+      }
+    } else {
+      if (gs === 1 || gs === 3) song.pauseVideo();
+      else if (gs === 2 && target >= 0 && target < dur && now - lastSeek > 300 && Math.abs(song.getCurrentTime() - target) > 0.1) {
+        song.seekTo(target, true); lastSeek = now;
+      }
+    }
+  }
+  setInterval(tick, 100);
+
+  // ---------- transport ----------
+  function togglePlay() {
+    if (!sceneReady) return toast('Load a scene first');
+    scene.getPlayerState() === 1 ? scene.pauseVideo() : scene.playVideo();
+  }
+  function playFromCue() {
+    if (!sceneReady) return toast('Load a scene first');
+    const st = Math.max(0, S.sceneCue - S.preroll);
+    scene.seekTo(st, true); scene.playVideo();
+    if (songReady && S.linked) {
+      const target = st + offset();
+      if (target >= 0) { song.seekTo(target, true); song.playVideo(); }
+      else { song.pauseVideo(); song.seekTo(0, true); }
+      lastSeek = performance.now();
+    }
+  }
+  function setLinked(on) {
+    S.linked = on; $('linkBtn').classList.toggle('on', on);
+    $('linkBtn').textContent = on ? '🔗 Linked' : '⛓️‍💥 Unlinked';
+    if (on) forceSync = true;
+    save();
+  }
+  function updatePlayBtn() {
+    const p = sceneReady && scene.getPlayerState() === 1;
+    $('playBtn').textContent = p ? '❚❚ Pause' : '▶ Play';
+  }
+
+  // ---------- cues ----------
+  function renderCues() {
+    if (document.activeElement !== $('sceneCue')) $('sceneCue').value = fmt(S.sceneCue);
+    if (document.activeElement !== $('songCue')) $('songCue').value = fmt(S.songCue);
+    const o = offset();
+    $('offOut').textContent = 'song = scene ' + (o >= 0 ? '+ ' : '− ') + Math.abs(o).toFixed(2) + 's';
+    $('preroll').value = S.preroll;
+  }
+  function cuesChanged() { forceSync = true; renderCues(); save(); }
+  function nudge(d) { S.sceneCue = Math.max(0, +(S.sceneCue + d).toFixed(3)); cuesChanged(); toast('Hit ' + (d > 0 ? 'later' : 'earlier') + ' ' + Math.abs(d) + 's'); }
+
+  // ---------- timeline ----------
+  const cv = $('tl'), ctx = cv.getContext('2d');
+  function sizeCanvas() {
+    const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', sizeCanvas); sizeCanvas();
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const COL = { scene: css('--scene'), song: css('--song'), rec: css('--rec'), dim: css('--dim'), line: css('--line') };
+
+  function drawLane(list, key, muteKey, color, W, H, dur, pad) {
+    if (!list.length) return;
+    const y = p => pad + (H - 2 * pad) * (1 - (p[muteKey] ? 0 : p[key]) / 100);
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+    list.forEach((p, i) => {
+      const x = (p.t / dur) * W;
+      if (i === 0) ctx.moveTo(x, y(p)); else { ctx.lineTo(x, y(list[i - 1])); ctx.lineTo(x, y(p)); }
+    });
+    ctx.lineTo(W, y(list[list.length - 1])); ctx.stroke();
+  }
+  function draw() {
+    requestAnimationFrame(draw);
+    const W = cv.clientWidth, H = cv.clientHeight;
+    ctx.clearRect(0, 0, W, H);
+    const t = sceneReady ? scene.getCurrentTime() || 0 : 0;
+    const dur = sceneReady ? scene.getDuration() || 0 : 0;
+    $('sceneClock').textContent = fmt(t);
+    $('songClock').textContent = fmt(songReady ? song.getCurrentTime() || 0 : 0);
+    if (!dur) {
+      ctx.fillStyle = COL.dim; ctx.font = '12px sans-serif'; ctx.fillText('Timeline appears once a scene is loaded', 12, H / 2 + 4);
+      return;
+    }
+    const X = s => (s / dur) * W, pad = 10;
+    // song span
+    if (songReady) {
+      const sd = song.getDuration() || 0, a = Math.max(0, -offset()), b = sd ? sd - offset() : dur;
+      ctx.fillStyle = '#ffffff12'; ctx.fillRect(X(a), 0, Math.max(0, X(Math.min(b, dur)) - X(a)), H);
+    }
+    // grid
+    ctx.strokeStyle = COL.line; ctx.lineWidth = 1; ctx.fillStyle = COL.dim; ctx.font = '10px ' + css('--mono');
+    const step = dur > 600 ? 60 : dur > 120 ? 15 : 5;
+    for (let s = 0; s < dur; s += step) { ctx.beginPath(); ctx.moveTo(X(s) + .5, 0); ctx.lineTo(X(s) + .5, H); ctx.stroke(); ctx.fillText(fmt(s).replace(/\.\d+$/, ''), X(s) + 3, H - 4); }
+    // automation
+    drawLane(S.auto, 'sv', 'sm', COL.scene, W, H, dur, pad);
+    drawLane(S.auto, 'mv', 'mm', COL.song, W, H, dur, pad);
+    if (rec && rec.chunk) {
+      ctx.fillStyle = COL.rec + '33'; ctx.fillRect(X(rec.chunk.start), 0, X(rec.chunk.last) - X(rec.chunk.start), H);
+      drawLane(rec.chunk.pts, 'sv', 'sm', COL.scene, W, H, dur, pad);
+      drawLane(rec.chunk.pts, 'mv', 'mm', COL.song, W, H, dur, pad);
+    }
+    // cue
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(S.sceneCue), 0); ctx.lineTo(X(S.sceneCue), H); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(X(S.sceneCue) - 5, 0); ctx.lineTo(X(S.sceneCue) + 5, 0); ctx.lineTo(X(S.sceneCue), 7); ctx.fill();
+    // playhead
+    ctx.strokeStyle = rec ? COL.rec : '#fff'; ctx.globalAlpha = .8; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(X(t) + .5, 0); ctx.lineTo(X(t) + .5, H); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  requestAnimationFrame(draw);
+
+  let scrubbing = false;
+  function scrubTo(e) {
+    if (!sceneReady) return;
+    const r = cv.getBoundingClientRect(), dur = scene.getDuration() || 0;
+    const t = Math.max(0, Math.min(dur, ((e.clientX - r.left) / r.width) * dur));
+    scene.seekTo(t, true); forceSync = true;
+  }
+  cv.addEventListener('pointerdown', e => { scrubbing = true; cv.setPointerCapture(e.pointerId); scrubTo(e); });
+  cv.addEventListener('pointermove', e => { if (scrubbing) scrubTo(e); });
+  cv.addEventListener('pointerup', () => scrubbing = false);
+
+  // ---------- wiring ----------
+  function doLoad() {
+    const a = parseYT($('sceneUrl').value), b = parseYT($('songUrl').value);
+    if (!a && !b) return toast('Paste at least one YouTube link');
+    if ($('sceneUrl').value && !a) toast("Couldn't read the scene link");
+    if ($('songUrl').value && !b) toast("Couldn't read the song link");
+    if (a && a.id !== S.sceneId) { S.auto = []; if (a.t) S.sceneCue = a.t; loadScene(a.id); }
+    if (b && b.id !== S.songId) { if (b.t) S.songCue = b.t; loadSong(b.id); }
+    renderCues(); save();
+  }
+  $('loadBtn').onclick = doLoad;
+  ['sceneUrl', 'songUrl'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLoad(); }));
+  $('shareBtn').onclick = async () => {
+    commitChunk();
+    const url = location.href.split('#')[0] + '#' + b64e(JSON.stringify(pack()));
+    try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { prompt('Copy this link:', url); }
+  };
+
+  $('sv').addEventListener('input', e => setVol('sv', +e.target.value));
+  $('mv').addEventListener('input', e => setVol('mv', +e.target.value));
+  $('sm').onclick = () => toggleMute('sm');
+  $('mm').onclick = () => toggleMute('mm');
+  $('recBtn').onclick = () => setRecording(!rec);
+  $('autoBtn').onclick = () => { S.autoOn = !S.autoOn; $('autoBtn').classList.toggle('on', S.autoOn); save(); };
+  $('clearBtn').onclick = () => { if (!S.auto.length || confirm('Clear all recorded moves?')) { S.auto = []; if (rec) rec.chunk = null; save(); } };
+
+  $('playBtn').onclick = togglePlay;
+  $('cueBtn').onclick = playFromCue;
+  $('linkBtn').onclick = () => setLinked(!S.linked);
+
+  $('markScene').onclick = () => { if (!sceneReady) return toast('Load a scene first'); S.sceneCue = +scene.getCurrentTime().toFixed(3); cuesChanged(); toast('Scene cue set'); };
+  $('markSong').onclick = () => { if (!songReady) return toast('Load a song first'); S.songCue = +song.getCurrentTime().toFixed(3); cuesChanged(); toast('Song cue set'); };
+  [['sceneCue', 'sceneCue'], ['songCue', 'songCue']].forEach(([id, key]) => {
+    $(id).addEventListener('change', e => { const v = parseTime(e.target.value); if (!isNaN(v) && v >= 0) S[key] = v; cuesChanged(); });
+    $(id).addEventListener('blur', renderCues);
+  });
+  document.querySelectorAll('[data-n]').forEach(b => b.onclick = () => nudge(+b.dataset.n));
+  $('preroll').addEventListener('change', e => { const v = +e.target.value; S.preroll = isFinite(v) && v >= 0 ? v : 3; renderCues(); save(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toLowerCase(), big = e.shiftKey;
+    const map = {
+      ' ': togglePlay, c: playFromCue, l: () => setLinked(!S.linked), r: () => setRecording(!rec),
+      q: () => setVol('sv', S.sv + (big ? 10 : 5)), a: () => setVol('sv', S.sv - (big ? 10 : 5)),
+      w: () => setVol('mv', S.mv + (big ? 10 : 5)), s: () => setVol('mv', S.mv - (big ? 10 : 5)),
+      '1': () => toggleMute('sm'), '2': () => toggleMute('mm'), '!': () => toggleMute('sm'), '@': () => toggleMute('mm'),
+      arrowleft: () => nudge(big ? -0.5 : -0.05), arrowright: () => nudge(big ? 0.5 : 0.05)
+    };
+    if (map[k]) { e.preventDefault(); if (e.target.blur) e.target.blur(); map[k](); }
+  });
+
+  // ---------- boot ----------
+  restore();
+  renderMix(); renderCues(); setLinked(S.linked);
+  $('autoBtn').classList.toggle('on', S.autoOn);
+  if (S.sceneId) { $('sceneUrl').value = 'https://youtu.be/' + S.sceneId; loadScene(S.sceneId); }
+  if (S.songId) { $('songUrl').value = 'https://youtu.be/' + S.songId; loadSong(S.songId); }
+})();
+</script>
+</body>
+</html>
