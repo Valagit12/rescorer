@@ -5,167 +5,236 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rescorer</title>
 <meta name="description" content="Line up a YouTube scene with a YouTube song and mix their audio live.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0e1014; --panel:#161920; --panel2:#1d212a; --line:#2a2f3a;
-    --text:#e8eaf0; --dim:#8b92a3;
-    --scene:#58cfe3; --song:#f2a93b; --rec:#ff4f5e; --ok:#5fd38d;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --ground:#1C1F26; --deck:#252932; --rail:#323743; --rail-hi:#3E4452;
+    --light:#EEE9DE; --dim:#9B9EA8;
+    --scene:#8DB8E0; --song:#F0B54A; --rec:#E5484D;
+    --font:"Archivo",system-ui,sans-serif;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
-  button,input{font:inherit;color:inherit}
-  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
-  .logo{font-weight:800;letter-spacing:.04em;font-size:16px;margin-right:6px}
-  .logo span{color:var(--song)}
-  .url{flex:1 1 260px;display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 8px}
-  .url b{font-size:11px;text-transform:uppercase;letter-spacing:.08em}
-  .url.scene b{color:var(--scene)} .url.song b{color:var(--song)}
-  .url input{flex:1;min-width:0;background:none;border:0;outline:0;padding:9px 2px}
-  button{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;white-space:nowrap}
-  button:hover{border-color:#3d4452}
-  button.primary{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600}
-  button.on{border-color:var(--ok);color:var(--ok)}
-  button.rec.on{background:var(--rec);border-color:var(--rec);color:#fff;animation:pulse 1s infinite}
-  @keyframes pulse{50%{opacity:.7}}
-  main{padding:16px;max-width:1400px;margin:0 auto;display:grid;gap:14px}
-  .stage{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(280px,1fr);gap:14px}
-  .video{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
-  .video iframe,.video>div{position:absolute;inset:0;width:100%;height:100%}
-  .video .empty{display:grid;place-items:center;color:var(--dim);font-size:13px;text-align:center;padding:12px}
-  .tag{position:absolute;z-index:2;top:8px;left:8px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:#000a;pointer-events:none}
-  .tag.scene{color:var(--scene)} .tag.song{color:var(--song)}
-  .side{display:grid;gap:14px;align-content:start}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
-  .card h3{margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:600;display:flex;justify-content:space-between;align-items:center}
-  .ch{display:grid;grid-template-columns:52px 1fr 40px auto;gap:8px;align-items:center;margin-bottom:10px}
-  .ch label{font-weight:600}
-  .ch.scene label{color:var(--scene)} .ch.song label{color:var(--song)}
-  .ch output{font-family:var(--mono);text-align:right}
-  input[type=range]{width:100%;height:28px;cursor:pointer}
-  .ch.scene input{accent-color:var(--scene)} .ch.song input{accent-color:var(--song)}
-  .mute.on{border-color:var(--rec);color:var(--rec)}
-  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .transport{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  .transport .play{min-width:92px}
-  .clock{font-family:var(--mono);font-size:13px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap}
-  .clock b{font-weight:500}
-  .clock .s b{color:var(--scene)} .clock .g b{color:var(--song)}
-  .spacer{flex:1}
-  canvas{display:block;width:100%;height:110px;border-radius:8px;background:var(--bg);border:1px solid var(--line);cursor:crosshair;touch-action:none}
-  .legend{display:flex;gap:14px;font-size:12px;color:var(--dim);margin-top:6px;flex-wrap:wrap}
-  .legend i{display:inline-block;width:10px;height:3px;vertical-align:middle;margin-right:4px}
-  .sync{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .cue{display:grid;gap:6px}
-  .cue .lbl{font-size:12px;color:var(--dim)}
-  .cue .lbl b{font-weight:600}
-  .cue.scene .lbl b{color:var(--scene)} .cue.song .lbl b{color:var(--song)}
-  .cue input{width:110px;font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
-  .nudge{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-  .nudge .off{font-family:var(--mono);color:var(--dim);margin-left:auto}
-  .num{width:64px;font-family:var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
-  .help{color:var(--dim);font-size:12px;line-height:1.7}
-  kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--panel2);color:var(--text)}
-  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 14px;border-radius:8px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
-  .toast.show{opacity:1}
-  @media (max-width:860px){
+  html,body{margin:0;background:var(--ground);color:var(--light);font:15px/1.5 var(--font);font-variation-settings:"wdth" 100}
+  button,input,output{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--song);outline-offset:2px}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* top bar */
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 20px}
+  .mark{font-size:22px;font-weight:800;font-stretch:125%;font-variation-settings:"wdth" 125;letter-spacing:-.01em;margin-right:10px}
+  .link{flex:1 1 240px;display:flex;align-items:center;gap:10px;background:var(--deck);border-radius:6px;padding:0 12px;border:1px solid transparent}
+  .link:focus-within{border-color:var(--rail-hi)}
+  .link .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .link input{flex:1;min-width:0;background:none;border:0;outline:0;padding:10px 0}
+  .link input::placeholder{color:var(--dim)}
+
+  /* buttons */
+  button{background:var(--rail);border:0;border-radius:6px;padding:9px 14px;cursor:pointer;white-space:nowrap;font-weight:500}
+  button:hover{background:var(--rail-hi)}
+  button.go{background:var(--light);color:var(--ground);font-weight:700}
+  button.go:hover{background:#fff}
+  button.quiet{background:none;color:var(--dim)}
+  button.quiet:hover{color:var(--light);background:var(--deck)}
+  #linkBtn{box-shadow:inset 0 0 0 1.5px var(--song);background:none;color:var(--song)}
+  #linkBtn.off{box-shadow:inset 0 0 0 1.5px var(--rail-hi);color:var(--dim)}
+  #recBtn.on{background:var(--rec);color:#fff}
+  #autoBtn.on{box-shadow:inset 0 0 0 1.5px var(--light)}
+  .mute.on{background:var(--rec);color:#fff}
+
+  main{padding:0 20px 28px;max-width:1440px;margin:0 auto;display:grid;gap:18px}
+
+  /* picture + console */
+  .stage{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+  .video{position:relative;aspect-ratio:16/9;background:#000;border-radius:2px;overflow:hidden}
+  .video iframe,.video>div.player{position:absolute;inset:0;width:100%;height:100%}
+  .empty{display:grid;place-items:center;color:var(--dim);text-align:center;padding:16px}
+  .vname{position:absolute;z-index:3;left:10px;bottom:8px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;background:#000b;pointer-events:none}
+  .vname.scene{color:var(--scene)} .vname.song{color:var(--song)}
+
+  /* the streamer: sweeps across picture into the hit, then punches */
+  .streamer{position:absolute;z-index:2;top:0;bottom:0;width:7px;margin-left:-7px;background:var(--song);box-shadow:0 0 18px 2px #f0b54a99;opacity:0;pointer-events:none}
+  .punch{position:absolute;z-index:2;left:50%;top:50%;width:22%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#fff 0 35%,#f0b54acc 36% 60%,transparent 62%);opacity:0;pointer-events:none}
+
+  .side{display:grid;gap:14px}
+  .console{background:var(--deck);border-radius:6px;padding:16px 14px;display:grid;grid-template-columns:auto auto 1fr;gap:14px}
+  .strip{display:grid;justify-items:center;gap:8px}
+  .strip .name{font-weight:700;font-size:13px}
+  .strip.scene .name{color:var(--scene)} .strip.song .name{color:var(--song)}
+  .strip output{font-size:20px;font-weight:700;font-stretch:80%;font-variation-settings:"wdth" 80;line-height:1}
+  .slot{position:relative;width:56px;height:190px;background:linear-gradient(to bottom,transparent 0 9px,#0003 9px calc(100% - 9px),transparent 0) center/2px 100% no-repeat}
+  .slot::before{content:"";position:absolute;inset:9px 8px;background:repeating-linear-gradient(to bottom,var(--rail-hi) 0 1px,transparent 1px 10%);mask:linear-gradient(90deg,#000 0 8px,transparent 8px calc(100% - 8px),#000 0)}
+  .fader{--p:50%;--c:var(--light);position:absolute;left:50%;top:50%;width:190px;height:44px;margin:-22px 0 0 -95px;transform:rotate(-90deg);-webkit-appearance:none;appearance:none;background:none;cursor:grab}
+  .fader:active{cursor:grabbing}
+  .strip.scene .fader{--c:var(--scene)} .strip.song .fader{--c:var(--song)}
+  .fader::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--c) var(--p),var(--ground) var(--p))}
+  .fader::-moz-range-track{height:6px;border-radius:3px;background:var(--ground)}
+  .fader::-moz-range-progress{height:6px;border-radius:3px;background:var(--c)}
+  .fader::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:40px;margin-top:-17px;border-radius:3px;background:linear-gradient(90deg,#d9d4c9 0 45%,#222 45% 55%,#d9d4c9 55%);box-shadow:0 3px 6px #0008}
+  .fader::-moz-range-thumb{width:20px;height:40px;border:0;border-radius:3px;background:linear-gradient(90deg,#d9d4c9 0 45%,#222 45% 55%,#d9d4c9 55%);box-shadow:0 3px 6px #0008}
+  .fader:focus-visible{outline:none}
+  .fader:focus-visible::-webkit-slider-thumb{outline:2px solid var(--song);outline-offset:2px}
+  .mute{padding:6px 12px;font-size:13px}
+  .moves{display:grid;align-content:start;gap:8px;padding-left:14px;border-left:1px solid var(--rail)}
+  .moves p{margin:0;color:var(--dim);font-size:13px;line-height:1.4}
+
+  /* timeline */
+  .deck{background:var(--deck);border-radius:6px;padding:14px}
+  .transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .transport .play{min-width:96px}
+  .clock{margin-left:auto;display:flex;gap:18px;font-size:14px;color:var(--dim)}
+  .clock b{font-weight:600;color:var(--light);margin-left:6px}
+  .key{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+  canvas{display:block;width:100%;height:110px;border-radius:2px;background:var(--ground);cursor:crosshair;touch-action:none}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:8px;font-size:13px;color:var(--dim)}
+  .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
+
+  /* line up */
+  .lineup{display:grid;grid-template-columns:auto auto 1fr;gap:14px 28px;align-items:end}
+  .lineup h2{grid-column:1/-1;margin:0;font-size:17px;font-weight:700}
+  .cue label{display:block;font-size:13px;color:var(--dim);margin-bottom:6px}
+  .cue label b{font-weight:600}
+  .cue.scene b{color:var(--scene)} .cue.song b{color:var(--song)}
+  .cue .row{display:flex;gap:6px}
+  .field{width:104px;background:var(--ground);border:1px solid var(--rail);border-radius:6px;padding:8px 10px;outline:0}
+  .field:focus{border-color:var(--rail-hi)}
+  .nudge{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
+  .nudge .lbl{color:var(--dim);font-size:13px;margin-right:2px}
+  .nudge .sep{width:1px;height:24px;background:var(--rail);margin:0 6px}
+  .nudge .field{width:62px}
+  #offOut{grid-column:1/-1;margin:0;color:var(--dim);font-size:14px}
+
+  /* help */
+  .help{display:grid;grid-template-columns:minmax(0,62ch) 1fr;gap:28px;color:var(--dim);font-size:14px}
+  .help p{margin:0}
+  .help b{color:var(--light);font-weight:600}
+  .keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px 18px;margin:0}
+  .keys div{display:flex;gap:8px;align-items:baseline}
+  .keys dt{flex:none}
+  .keys dd{margin:0}
+  kbd{font:600 12px var(--font);border-radius:4px;padding:1px 6px;background:var(--rail);color:var(--light);box-shadow:0 2px 0 #0006}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,8px);background:var(--light);color:var(--ground);padding:9px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .15s,transform .15s;pointer-events:none}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media (max-width:900px){
     .stage{grid-template-columns:1fr}
-    .sync{grid-template-columns:1fr}
+    .side{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    .lineup{grid-template-columns:1fr 1fr}
+    .nudge{grid-column:1/-1;justify-content:flex-start}
+    .help{grid-template-columns:1fr}
   }
+  @media (max-width:600px){
+    header,main{padding-left:16px;padding-right:16px}
+    .side{grid-template-columns:1fr}
+    .lineup{grid-template-columns:1fr}
+    .clock{margin-left:0;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">RE<span>SCORER</span></div>
-  <label class="url scene"><b>Scene</b><input id="sceneUrl" placeholder="YouTube link to the scene" spellcheck="false"></label>
-  <label class="url song"><b>Song</b><input id="songUrl" placeholder="YouTube link to the song" spellcheck="false"></label>
-  <button class="primary" id="loadBtn">Load</button>
-  <button id="shareBtn" title="Copy a link that reopens this exact setup">Copy link</button>
+  <div class="mark">Rescorer</div>
+  <label class="link"><span class="dot" style="background:var(--scene)"></span><input id="sceneUrl" placeholder="Scene — paste a YouTube link" spellcheck="false" aria-label="Scene YouTube link"></label>
+  <label class="link"><span class="dot" style="background:var(--song)"></span><input id="songUrl" placeholder="Song — paste a YouTube link" spellcheck="false" aria-label="Song YouTube link"></label>
+  <button class="go" id="loadBtn">Load</button>
+  <button class="quiet" id="shareBtn" title="Copy a link that reopens this exact setup">Copy link</button>
 </header>
 
 <main>
   <section class="stage">
-    <div class="video"><span class="tag scene">Scene</span><div id="scenePlayer" class="empty">Paste a scene link above and hit Load</div></div>
+    <div class="video">
+      <div id="scenePlayer" class="player empty">Paste a scene link above and press Load</div>
+      <div class="streamer" id="streamer"></div>
+      <div class="punch" id="punch"></div>
+      <span class="vname scene">Scene</span>
+    </div>
     <div class="side">
-      <div class="video"><span class="tag song">Song</span><div id="songPlayer" class="empty">Paste a song link above</div></div>
-      <div class="card">
-        <h3>Live mix</h3>
-        <div class="ch scene">
-          <label for="sv">Scene</label>
-          <input type="range" id="sv" min="0" max="100" step="1">
-          <output id="svOut"></output>
-          <button class="mute" id="sm" title="Mute scene (1)">M</button>
+      <div class="video">
+        <div id="songPlayer" class="player empty">Paste a song link above</div>
+        <span class="vname song">Song</span>
+      </div>
+      <div class="console">
+        <div class="strip scene">
+          <output id="svOut" class="num"></output>
+          <div class="slot"><input type="range" class="fader" id="sv" min="0" max="100" step="1" aria-label="Scene volume"></div>
+          <button class="mute" id="sm" title="Mute scene (1)">Mute</button>
+          <span class="name">Scene</span>
         </div>
-        <div class="ch song">
-          <label for="mv">Song</label>
-          <input type="range" id="mv" min="0" max="100" step="1">
-          <output id="mvOut"></output>
-          <button class="mute" id="mm" title="Mute song (2)">M</button>
+        <div class="strip song">
+          <output id="mvOut" class="num"></output>
+          <div class="slot"><input type="range" class="fader" id="mv" min="0" max="100" step="1" aria-label="Song volume"></div>
+          <button class="mute" id="mm" title="Mute song (2)">Mute</button>
+          <span class="name">Song</span>
         </div>
-        <div class="row">
-          <button class="rec" id="recBtn" title="Record your volume moves (R)">● Record moves</button>
-          <button id="autoBtn" title="Replay recorded moves while playing">Replay moves</button>
-          <button id="clearBtn">Clear</button>
+        <div class="moves">
+          <button id="recBtn" title="Record your fader moves (R)">Record moves</button>
+          <button id="autoBtn" title="Play recorded moves back while the scene plays">Replay moves</button>
+          <button class="quiet" id="clearBtn">Clear moves</button>
+          <p>Recording over a section only replaces that section.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="card">
+  <section class="deck">
     <div class="transport">
-      <button class="primary play" id="playBtn">▶ Play</button>
-      <button id="cueBtn" title="Jump to a few seconds before the cue and play (C)">⏮ Play from cue</button>
-      <button id="linkBtn" title="When linked, the song follows the scene (L)">🔗 Linked</button>
-      <div class="spacer"></div>
-      <div class="clock">
-        <span class="s">scene <b id="sceneClock">0:00.00</b></span>
-        <span class="g">song <b id="songClock">0:00.00</b></span>
+      <button class="go play" id="playBtn">Play</button>
+      <button id="cueBtn" title="Jump to just before the hit and play (C)">Play from cue</button>
+      <button id="linkBtn" title="When linked, the song follows the scene (L)">Linked</button>
+      <div class="clock num">
+        <span><span class="key" style="background:var(--scene)"></span>Scene<b id="sceneClock">0:00.00</b></span>
+        <span><span class="key" style="background:var(--song)"></span>Song<b id="songClock">0:00.00</b></span>
       </div>
     </div>
-    <div style="height:10px"></div>
-    <canvas id="tl"></canvas>
+    <canvas id="tl" aria-label="Timeline — click or drag to move through the scene"></canvas>
     <div class="legend">
-      <span><i style="background:var(--scene)"></i>scene volume</span>
-      <span><i style="background:var(--song)"></i>song volume</span>
-      <span><i style="background:#ffffff22;height:10px"></i>where the song plays</span>
-      <span><i style="background:#fff;width:2px;height:10px"></i>cue</span>
-      <span>click / drag to scrub</span>
+      <span><i style="background:var(--scene)"></i>Scene volume</span>
+      <span><i style="background:var(--song)"></i>Song volume</span>
+      <span><i style="background:#ffffff26;height:10px"></i>Where the song plays</span>
+      <span><i style="background:var(--light);width:2px;height:12px"></i>The hit</span>
     </div>
   </section>
 
-  <section class="card">
-    <h3>Line it up</h3>
-    <div class="sync">
-      <div class="cue scene">
-        <div class="lbl"><b>Scene cue</b> — the moment in the scene the music should hit</div>
-        <div class="row"><input id="sceneCue" value="0:00.00"><button id="markScene">Mark scene now</button></div>
-      </div>
-      <div class="cue song">
-        <div class="lbl"><b>Song cue</b> — the moment in the song that should land there</div>
-        <div class="row"><input id="songCue" value="0:00.00"><button id="markSong">Mark song now</button></div>
-      </div>
-      <div class="nudge">
-        <span class="help">Nudge the hit:</span>
-        <button data-n="-0.5">◀◀ 0.5s earlier</button>
-        <button data-n="-0.05">◀ 0.05s</button>
-        <button data-n="0.05">0.05s ▶</button>
-        <button data-n="0.5">0.5s later ▶▶</button>
-        <span class="help">Pre-roll</span><input class="num" id="preroll" type="number" min="0" step="0.5">
-        <span class="off" id="offOut"></span>
-      </div>
+  <section class="deck lineup">
+    <h2>Line up the hit</h2>
+    <div class="cue scene">
+      <label for="sceneCue"><b>Scene</b> — the moment the music should land</label>
+      <div class="row"><input class="field num" id="sceneCue" value="0:00.00"><button id="markScene">Mark now</button></div>
     </div>
+    <div class="cue song">
+      <label for="songCue"><b>Song</b> — the beat that lands there</label>
+      <div class="row"><input class="field num" id="songCue" value="0:00.00"><button id="markSong">Mark now</button></div>
+    </div>
+    <div class="nudge">
+      <span class="lbl">Move the hit</span>
+      <button data-n="-0.5" title="Shift + ←">0.5s earlier</button>
+      <button data-n="-0.05" title="←">0.05s earlier</button>
+      <button data-n="0.05" title="→">0.05s later</button>
+      <button data-n="0.5" title="Shift + →">0.5s later</button>
+      <span class="sep"></span>
+      <span style="display:inline-flex;gap:8px;align-items:center"><label class="lbl" for="preroll">Pre-roll</label><input class="field num" id="preroll" type="number" min="0" step="0.5"></span>
+    </div>
+    <p id="offOut" class="num"></p>
   </section>
 
   <section class="help">
-    <b style="color:var(--text)">How to line up:</b> Unlink, scrub the scene to the hit moment → <b>Mark scene now</b>.
-    Scrub the song to its hit → <b>Mark song now</b>. Link again and hit <b>Play from cue</b>. Nudge until it feels right, then ride the faders.
-    Hit <b>Record moves</b> to capture your fader rides — they replay on the next pass, and recording over a section only replaces that section.
-    <br>
-    <kbd>Space</kbd> play/pause · <kbd>C</kbd> play from cue · <kbd>Q</kbd>/<kbd>A</kbd> scene vol · <kbd>W</kbd>/<kbd>S</kbd> song vol ·
-    <kbd>1</kbd>/<kbd>2</kbd> mute scene/song · <kbd>←</kbd>/<kbd>→</kbd> nudge (hold <kbd>Shift</kbd> for 0.5s) · <kbd>R</kbd> record · <kbd>L</kbd> link
+    <p><b>Lining up:</b> switch to Unlinked so the videos move separately. Find the hit in the scene and press Mark now, then find the beat in the song and press Mark now. Switch back to Linked and press Play from cue — the streamer sweeps across the picture and flashes on the hit. Nudge until it feels right, then ride the faders.</p>
+    <dl class="keys">
+      <div><dt><kbd>Space</kbd></dt><dd>Play or pause</dd></div>
+      <div><dt><kbd>C</kbd></dt><dd>Play from cue</dd></div>
+      <div><dt><kbd>Q</kbd> <kbd>A</kbd></dt><dd>Scene louder, quieter</dd></div>
+      <div><dt><kbd>W</kbd> <kbd>S</kbd></dt><dd>Song louder, quieter</dd></div>
+      <div><dt><kbd>1</kbd> <kbd>2</kbd></dt><dd>Mute scene, song</dd></div>
+      <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move the hit (Shift for 0.5s)</dd></div>
+      <div><dt><kbd>R</kbd></dt><dd>Record moves</dd></div>
+      <div><dt><kbd>L</kbd></dt><dd>Link or unlink</dd></div>
+    </dl>
   </section>
 </main>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
 (() => {
@@ -181,6 +250,7 @@
   let scene = null, song = null, sceneReady = false, songReady = false;
   let rec = null, lastSeek = 0, forceSync = false;
   const offset = () => S.songCue - S.sceneCue;
+  const STREAMER = 2; // seconds the streamer takes to cross the picture
 
   // ---------- helpers ----------
   function fmt(t) {
@@ -294,9 +364,13 @@
     renderMix();
   }
   function renderMix() {
-    $('sv').value = S.sv; $('svOut').textContent = S.sv;
-    $('mv').value = S.mv; $('mvOut').textContent = S.mv;
-    $('sm').classList.toggle('on', S.sm); $('mm').classList.toggle('on', S.mm);
+    for (const [k, m] of [['sv', 'sm'], ['mv', 'mm']]) {
+      const el = $(k);
+      el.value = S[k]; el.style.setProperty('--p', S[k] + '%');
+      $(k + 'Out').textContent = S[m] ? 'Off' : S[k];
+      $(m).classList.toggle('on', S[m]);
+      $(m).textContent = S[m] ? 'Muted' : 'Mute';
+    }
   }
   function setVol(key, val) {
     S[key] = Math.max(0, Math.min(100, Math.round(val)));
@@ -325,6 +399,7 @@
     if (!on) { commitChunk(); rec = null; }
     else rec = { chunk: null };
     $('recBtn').classList.toggle('on', !!rec);
+    $('recBtn').textContent = rec ? 'Stop recording' : 'Record moves';
   }
 
   // ---------- the heartbeat: automation + sync ----------
@@ -388,14 +463,15 @@
     }
   }
   function setLinked(on) {
-    S.linked = on; $('linkBtn').classList.toggle('on', on);
-    $('linkBtn').textContent = on ? '🔗 Linked' : '⛓️‍💥 Unlinked';
+    S.linked = on;
+    $('linkBtn').classList.toggle('off', !on);
+    $('linkBtn').textContent = on ? 'Linked' : 'Unlinked';
     if (on) forceSync = true;
     save();
   }
   function updatePlayBtn() {
     const p = sceneReady && scene.getPlayerState() === 1;
-    $('playBtn').textContent = p ? '❚❚ Pause' : '▶ Play';
+    $('playBtn').textContent = p ? 'Pause' : 'Play';
   }
 
   // ---------- cues ----------
@@ -403,11 +479,13 @@
     if (document.activeElement !== $('sceneCue')) $('sceneCue').value = fmt(S.sceneCue);
     if (document.activeElement !== $('songCue')) $('songCue').value = fmt(S.songCue);
     const o = offset();
-    $('offOut').textContent = 'song = scene ' + (o >= 0 ? '+ ' : '− ') + Math.abs(o).toFixed(2) + 's';
+    $('offOut').textContent = Math.abs(o) < 0.005
+      ? 'The song and scene run on the same clock.'
+      : `The song runs ${Math.abs(o).toFixed(2)}s ${o > 0 ? 'ahead of' : 'behind'} the scene.`;
     $('preroll').value = S.preroll;
   }
   function cuesChanged() { forceSync = true; renderCues(); save(); }
-  function nudge(d) { S.sceneCue = Math.max(0, +(S.sceneCue + d).toFixed(3)); cuesChanged(); toast('Hit ' + (d > 0 ? 'later' : 'earlier') + ' ' + Math.abs(d) + 's'); }
+  function nudge(d) { S.sceneCue = Math.max(0, +(S.sceneCue + d).toFixed(3)); cuesChanged(); toast('Hit moved ' + Math.abs(d) + 's ' + (d > 0 ? 'later' : 'earlier')); }
 
   // ---------- timeline ----------
   const cv = $('tl'), ctx = cv.getContext('2d');
@@ -418,7 +496,7 @@
   }
   window.addEventListener('resize', sizeCanvas); sizeCanvas();
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const COL = { scene: css('--scene'), song: css('--song'), rec: css('--rec'), dim: css('--dim'), line: css('--line') };
+  const COL = { scene: css('--scene'), song: css('--song'), rec: css('--rec'), dim: css('--dim'), rail: css('--rail'), light: css('--light') };
 
   function drawLane(list, key, muteKey, color, W, H, dur, pad) {
     if (!list.length) return;
@@ -430,6 +508,14 @@
     });
     ctx.lineTo(W, y(list[list.length - 1])); ctx.stroke();
   }
+  const streamer = $('streamer'), punch = $('punch');
+  function drawStreamer(t, playing) {
+    const d = S.sceneCue - t;
+    const showStreamer = playing && S.sceneCue > 0 && d > 0 && d <= STREAMER;
+    streamer.style.opacity = showStreamer ? 1 : 0;
+    if (showStreamer) streamer.style.left = ((STREAMER - d) / STREAMER * 100) + '%';
+    punch.style.opacity = playing && S.sceneCue > 0 && d <= 0 && d > -0.4 ? 1 + d / 0.4 : 0;
+  }
   function draw() {
     requestAnimationFrame(draw);
     const W = cv.clientWidth, H = cv.clientHeight;
@@ -438,21 +524,23 @@
     const dur = sceneReady ? scene.getDuration() || 0 : 0;
     $('sceneClock').textContent = fmt(t);
     $('songClock').textContent = fmt(songReady ? song.getCurrentTime() || 0 : 0);
+    drawStreamer(t, sceneReady && scene.getPlayerState() === 1);
     if (!dur) {
-      ctx.fillStyle = COL.dim; ctx.font = '12px sans-serif'; ctx.fillText('Timeline appears once a scene is loaded', 12, H / 2 + 4);
+      ctx.fillStyle = COL.dim; ctx.font = '13px Archivo, sans-serif';
+      ctx.fillText('Load a scene to see its timeline', 14, H / 2 + 4);
       return;
     }
-    const X = s => (s / dur) * W, pad = 10;
-    // song span
+    const X = s => (s / dur) * W, pad = 12;
     if (songReady) {
       const sd = song.getDuration() || 0, a = Math.max(0, -offset()), b = sd ? sd - offset() : dur;
-      ctx.fillStyle = '#ffffff12'; ctx.fillRect(X(a), 0, Math.max(0, X(Math.min(b, dur)) - X(a)), H);
+      ctx.fillStyle = '#ffffff14'; ctx.fillRect(X(a), 0, Math.max(0, X(Math.min(b, dur)) - X(a)), H);
     }
-    // grid
-    ctx.strokeStyle = COL.line; ctx.lineWidth = 1; ctx.fillStyle = COL.dim; ctx.font = '10px ' + css('--mono');
+    ctx.strokeStyle = COL.rail; ctx.lineWidth = 1; ctx.fillStyle = COL.dim; ctx.font = '11px Archivo, sans-serif';
     const step = dur > 600 ? 60 : dur > 120 ? 15 : 5;
-    for (let s = 0; s < dur; s += step) { ctx.beginPath(); ctx.moveTo(X(s) + .5, 0); ctx.lineTo(X(s) + .5, H); ctx.stroke(); ctx.fillText(fmt(s).replace(/\.\d+$/, ''), X(s) + 3, H - 4); }
-    // automation
+    for (let s = 0; s < dur; s += step) {
+      ctx.beginPath(); ctx.moveTo(X(s) + .5, 0); ctx.lineTo(X(s) + .5, H); ctx.stroke();
+      ctx.fillText(fmt(s).replace(/\.\d+$/, ''), X(s) + 4, H - 5);
+    }
     drawLane(S.auto, 'sv', 'sm', COL.scene, W, H, dur, pad);
     drawLane(S.auto, 'mv', 'mm', COL.song, W, H, dur, pad);
     if (rec && rec.chunk) {
@@ -460,11 +548,10 @@
       drawLane(rec.chunk.pts, 'sv', 'sm', COL.scene, W, H, dur, pad);
       drawLane(rec.chunk.pts, 'mv', 'mm', COL.song, W, H, dur, pad);
     }
-    // cue
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(S.sceneCue), 0); ctx.lineTo(X(S.sceneCue), H); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(X(S.sceneCue) - 5, 0); ctx.lineTo(X(S.sceneCue) + 5, 0); ctx.lineTo(X(S.sceneCue), 7); ctx.fill();
-    // playhead
-    ctx.strokeStyle = rec ? COL.rec : '#fff'; ctx.globalAlpha = .8; ctx.lineWidth = 1;
+    const cx = X(S.sceneCue);
+    ctx.strokeStyle = COL.light; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+    ctx.fillStyle = COL.light; ctx.beginPath(); ctx.moveTo(cx - 6, 0); ctx.lineTo(cx + 6, 0); ctx.lineTo(cx, 8); ctx.fill();
+    ctx.strokeStyle = rec ? COL.rec : COL.light; ctx.globalAlpha = .75; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(X(t) + .5, 0); ctx.lineTo(X(t) + .5, H); ctx.stroke(); ctx.globalAlpha = 1;
   }
   requestAnimationFrame(draw);
@@ -483,9 +570,9 @@
   // ---------- wiring ----------
   function doLoad() {
     const a = parseYT($('sceneUrl').value), b = parseYT($('songUrl').value);
-    if (!a && !b) return toast('Paste at least one YouTube link');
-    if ($('sceneUrl').value && !a) toast("Couldn't read the scene link");
-    if ($('songUrl').value && !b) toast("Couldn't read the song link");
+    if (!a && !b) return toast('Paste a YouTube link for the scene or the song');
+    if ($('sceneUrl').value && !a) toast("That scene link isn't a YouTube video link");
+    if ($('songUrl').value && !b) toast("That song link isn't a YouTube video link");
     if (a && a.id !== S.sceneId) { S.auto = []; if (a.t) S.sceneCue = a.t; loadScene(a.id); }
     if (b && b.id !== S.songId) { if (b.t) S.songCue = b.t; loadSong(b.id); }
     renderCues(); save();
@@ -504,14 +591,14 @@
   $('mm').onclick = () => toggleMute('mm');
   $('recBtn').onclick = () => setRecording(!rec);
   $('autoBtn').onclick = () => { S.autoOn = !S.autoOn; $('autoBtn').classList.toggle('on', S.autoOn); save(); };
-  $('clearBtn').onclick = () => { if (!S.auto.length || confirm('Clear all recorded moves?')) { S.auto = []; if (rec) rec.chunk = null; save(); } };
+  $('clearBtn').onclick = () => { if (!S.auto.length || confirm('Clear all recorded moves?')) { S.auto = []; if (rec) rec.chunk = null; save(); toast('Moves cleared'); } };
 
   $('playBtn').onclick = togglePlay;
   $('cueBtn').onclick = playFromCue;
   $('linkBtn').onclick = () => setLinked(!S.linked);
 
-  $('markScene').onclick = () => { if (!sceneReady) return toast('Load a scene first'); S.sceneCue = +scene.getCurrentTime().toFixed(3); cuesChanged(); toast('Scene cue set'); };
-  $('markSong').onclick = () => { if (!songReady) return toast('Load a song first'); S.songCue = +song.getCurrentTime().toFixed(3); cuesChanged(); toast('Song cue set'); };
+  $('markScene').onclick = () => { if (!sceneReady) return toast('Load a scene first'); S.sceneCue = +scene.getCurrentTime().toFixed(3); cuesChanged(); toast('Scene hit marked'); };
+  $('markSong').onclick = () => { if (!songReady) return toast('Load a song first'); S.songCue = +song.getCurrentTime().toFixed(3); cuesChanged(); toast('Song hit marked'); };
   [['sceneCue', 'sceneCue'], ['songCue', 'songCue']].forEach(([id, key]) => {
     $(id).addEventListener('change', e => { const v = parseTime(e.target.value); if (!isNaN(v) && v >= 0) S[key] = v; cuesChanged(); });
     $(id).addEventListener('blur', renderCues);
