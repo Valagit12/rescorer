@@ -219,32 +219,21 @@
     .side{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   }
 
-  /* phones: an app screen. Picture on top with the audio player tucked in its corner,
-     timeline under it, and Mix / Clip taking turns in the thumb zone at the bottom. */
-  @media (max-width:700px){
+  /* ---------- phones: shared pieces (upright or sideways) ---------- */
+  @media (max-width:700px), (max-height:500px) and (orientation:landscape){
     header{padding:calc(10px + env(safe-area-inset-top)) 12px 10px;gap:8px;flex-wrap:nowrap}
     .mark{font-size:19px;margin-right:auto}
     .desk{display:none !important}
     .mob-actions{display:flex}
     .mob-actions button{padding:8px 11px}
     .long{display:none} .short{display:inline}
-    dialog{margin:auto 0 0;width:100%;max-width:100%;max-height:85dvh;border-radius:14px 14px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
     .share-opt{flex-wrap:wrap}
     .share-opt .acts{width:100%}
     .share-opt .acts button{flex:1;padding:11px}
-
-    body:not(.watch){height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-    body:not(.watch) main{flex:1;min-height:0;display:flex;flex-direction:column;padding:0;gap:0;position:relative;width:100%}
-    body:not(.watch) .stage,body:not(.watch) .side{display:contents}
-    body:not(.watch) #videoScreen{order:1;flex:none;border-radius:0}
-    body:not(.watch) #audioScreen{position:absolute;top:8px;right:8px;width:34%;z-index:6;border-radius:4px;box-shadow:0 6px 20px #000c;outline:1px solid #ffffff26}
-    body:not(.watch) #audioScreen .vname,body:not(.watch) #audioScreen .empty{display:none}
-    body.no-audio #audioScreen{display:none}
-    body:not(.watch) .editor-deck{order:2;border-radius:0;padding:8px 12px 10px}
-    body:not(.watch) .tabs{order:3;display:flex;gap:6px;padding:6px 12px;background:var(--ground)}
-    body:not(.watch) .console,body:not(.watch) #selPanel{order:4;flex:1;min-height:0;overflow:auto;border-radius:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom))}
     main[data-tab=mix] #selPanel,main[data-tab=clip] .console{display:none}
     .keys-box{display:none}
+    body:not(.watch) #audioScreen .vname,body:not(.watch) #audioScreen .empty{display:none}
+    body.no-audio #audioScreen{display:none}
 
     .tabs button{flex:1;background:none;color:var(--dim);padding:8px}
     .tabs button[aria-selected=true]{background:var(--rail);color:var(--light)}
@@ -258,7 +247,6 @@
     .tc small{display:none}
     .tl{grid-template-columns:minmax(0,1fr)}
     .heads{display:none}
-    .view{grid-template-rows:24px 64px 54px}
 
     /* horizontal faders: a thumb swipes sideways */
     .console{display:flex;flex-direction:column;gap:12px}
@@ -275,6 +263,21 @@
     .move-row #splitBtn{grid-column:span 2}
     .move-row #deleteBtn{grid-column:span 2}
     .sel-head{flex-wrap:wrap}
+  }
+
+  /* ---------- phone upright: picture on top with the audio player tucked in its corner,
+     timeline under it, and Mix / Clip taking turns in the thumb zone at the bottom ---------- */
+  @media (max-width:700px) and (orientation:portrait){
+    dialog{margin:auto 0 0;width:100%;max-width:100%;max-height:85dvh;border-radius:14px 14px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+    body:not(.watch){height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+    body:not(.watch) main{flex:1;min-height:0;display:flex;flex-direction:column;padding:0;gap:0;position:relative;width:100%}
+    body:not(.watch) .stage,body:not(.watch) .side{display:contents}
+    body:not(.watch) #videoScreen{order:1;flex:none;border-radius:0}
+    body:not(.watch) #audioScreen{position:absolute;top:8px;right:8px;width:34%;z-index:6;border-radius:4px;box-shadow:0 6px 20px #000c;outline:1px solid #ffffff26}
+    body:not(.watch) .editor-deck{order:2;border-radius:0;padding:8px 12px 10px}
+    body:not(.watch) .tabs{order:3;display:flex;gap:6px;padding:6px 12px;background:var(--ground)}
+    body:not(.watch) .console,body:not(.watch) #selPanel{order:4;flex:1;min-height:0;overflow:auto;border-radius:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom))}
+    .view{grid-template-rows:24px 64px 54px}
 
     body.watch main{padding:0 0 24px;gap:12px}
     body.watch #videoScreen{border-radius:0}
@@ -282,6 +285,53 @@
     body.watch .watch-title{padding:0 16px}
     body.watch .watchbar{margin:0 12px}
   }
+
+  /* ---------- phone sideways: picture on the left sized to the screen height, header and
+     Mix / Clip to its right, and the timeline running the full width along the bottom ---------- */
+  @media (max-height:500px) and (orientation:landscape){
+    :root{--deck-h:166px}
+    dialog{width:min(560px,92vw);max-height:92dvh}
+    body:not(.watch){
+      height:100dvh;overflow:hidden;display:grid;
+      grid-template-columns:calc((100dvh - var(--deck-h)) * 16 / 9) minmax(0,1fr);
+      grid-template-rows:auto auto minmax(0,1fr) var(--deck-h);
+      grid-template-areas:"video head" "video tabs" "video panel" "deck deck";
+      padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    }
+    body:not(.watch) main,body:not(.watch) .stage,body:not(.watch) .side{display:contents}
+    body:not(.watch) header{grid-area:head;padding:8px 12px 6px}
+    body:not(.watch) .mark{font-size:17px}
+    body:not(.watch) .mob-actions button{padding:7px 10px}
+    body:not(.watch) #videoScreen{grid-area:video;border-radius:0;width:100%;align-self:stretch;aspect-ratio:auto}
+    body:not(.watch) #audioScreen{grid-area:video;justify-self:end;align-self:start;width:34%;margin:8px;z-index:6;border-radius:4px;box-shadow:0 6px 20px #000c;outline:1px solid #ffffff26}
+    body:not(.watch) .tabs{grid-area:tabs;display:flex;gap:6px;padding:0 12px 6px}
+    body:not(.watch) .tabs button{padding:6px}
+    body:not(.watch) .console,body:not(.watch) #selPanel{grid-area:panel;min-height:0;overflow:auto;border-radius:0;background:none;padding:6px 12px 10px}
+    body:not(.watch) .console{gap:6px}
+    body:not(.watch) .strip{gap:8px}
+    body:not(.watch) .slot,body:not(.watch) .fader{height:38px}
+    body:not(.watch) .moves{padding-top:8px}
+    body:not(.watch) .moves button,body:not(.watch) #selPanel button{padding:7px 10px}
+    body:not(.watch) #selPanel{gap:8px}
+    body:not(.watch) .sel-head h2{font-size:15px}
+    body:not(.watch) .editor-deck{grid-area:deck;border-radius:0;padding:6px 10px calc(6px + env(safe-area-inset-bottom));border-top:1px solid var(--rail)}
+    body:not(.watch) .transport{margin-bottom:6px}
+    body:not(.watch) .transport button{padding:6px 10px}
+    .view{grid-template-rows:20px 48px 42px}
+    .clip{top:4px;bottom:4px}
+
+    /* watching: the biggest picture that fits, play bar under it */
+    body.watch header{padding:6px 12px}
+    body.watch .mark{font-size:16px}
+    body.watch #wEditTop{padding:6px 12px}
+    body.watch .watch-title{display:none}
+    body.watch main{padding:0 12px;gap:8px;max-width:none}
+    body.watch #videoScreen{width:min(100%,calc((100dvh - 108px) * 16 / 9));justify-self:center;border-radius:2px}
+    body.watch .stage{justify-items:center}
+    body.watch #audioScreen{right:calc(50% - min(50%,calc((100dvh - 108px) * 8 / 9)) + 8px);top:8px;width:calc(min(100%,(100dvh - 108px) * 16 / 9) * .3)}
+    body.watch .watchbar{width:min(100%,calc((100dvh - 108px) * 16 / 9));justify-self:center;padding:6px 10px;margin:0 auto}
+  }
+
   @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style>
 </head>
@@ -1233,7 +1283,7 @@
     e.stopPropagation();
     const c = byId(id); if (!c) return;
     select(id);
-    if (matchMedia('(max-width:700px)').matches) setTab('clip');
+    if (matchMedia('(max-width:700px), (max-height:500px) and (orientation:landscape)').matches) setTab('clip');
     const cl = e.target.classList;
     const kind = cl.contains('hit') ? 'hit' : cl.contains('l') ? 'trimL' : cl.contains('r') ? 'trimR' : 'move';
     if (kind !== 'move' && !known(c)) return;
@@ -1488,6 +1538,10 @@
     };
     if (map[k]) { e.preventDefault(); if (e.target.blur) e.target.blur(); map[k](); }
   });
+
+  // pasting a shared link into a tab that already has Rescorer open only changes the part after #,
+  // which browsers don't reload for, so reload ourselves
+  window.addEventListener('hashchange', () => { if (/^#(watch|edit)=/.test(location.hash)) location.reload(); });
 
   // ---------- boot ----------
   // #watch=… opens the finished edit, #edit=… opens a copy in the editor,
