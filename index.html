@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1C1F26">
 <title>Rescorer</title>
 <meta name="description" content="Cut YouTube video and audio clips together on a timeline and mix them live.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -173,16 +174,113 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,8px);background:var(--light);color:var(--ground);padding:9px 16px;border-radius:6px;font-weight:600;opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;z-index:50}
   .toast.show{opacity:1;transform:translate(-50%,0)}
 
+  /* which bits show where */
+  .watch-only,.mob-actions,.tabs,.short{display:none}
+  body.watch .editor-only{display:none !important}
+  body.watch .watchbar{display:flex}
+  body.watch .watch-title{display:block}
+  body.watch #wEditTop{display:inline-block;margin-left:auto}
+  .mob-actions{gap:6px;margin-left:auto;align-items:center}
+
+  /* watch view: just the finished edit */
+  body.watch main{max-width:1100px}
+  body.watch .stage{grid-template-columns:1fr;position:relative}
+  body.watch .side{display:contents}
+  body.watch #audioScreen{position:absolute;top:12px;right:12px;width:min(26%,260px);z-index:6;border-radius:4px;box-shadow:0 6px 20px #000c;outline:1px solid #ffffff26}
+  body.watch #audioScreen .vname,body.watch #audioScreen .empty{display:none}
+  body.watch.no-audio #audioScreen{display:none}
+  .watch-title{margin:0;font-size:clamp(20px,3vw,28px);font-weight:800;font-stretch:112%;font-variation-settings:"wdth" 112;line-height:1.15;letter-spacing:-.01em}
+  .watchbar{gap:12px;align-items:center;background:var(--deck);border-radius:6px;padding:10px 12px}
+  .watchbar input[type=range]{flex:1;min-width:0;accent-color:var(--audio);height:28px}
+  .wtime{color:var(--dim);font-size:14px;white-space:nowrap}
+  #wPlay{min-width:84px}
+
+  /* share + add sheets */
+  .share-opt{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--rail)}
+  .share-txt b{display:block;font-weight:600}
+  .share-txt span{font-size:13px;color:var(--dim)}
+  .share-opt .acts{display:flex;gap:6px;flex:none}
+  .note{margin:12px 0 0;font-size:13px;color:var(--dim)}
+  .field.wide{width:100%;margin-bottom:12px;padding:12px}
+  .add-acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .add-acts button{display:flex;gap:8px;align-items:center;justify-content:center;padding:12px}
+  .add-acts .dot{width:8px;height:8px;border-radius:50%}
+
+  /* fingers need bigger handles */
+  @media (pointer:coarse){
+    .trim{width:20px}
+    .clip.sel .trim{background:#ffffff2e}
+    .hit{width:30px;margin-left:-15px}
+    .hit::before{left:14px} .hit::after{left:9px}
+  }
+
   @media (max-width:900px){
     .stage{grid-template-columns:1fr}
     .side{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   }
-  @media (max-width:600px){
-    header,main{padding-left:16px;padding-right:16px}
-    .side{grid-template-columns:1fr}
-    .zoom{margin-left:0;width:100%}
-    .tl{grid-template-columns:64px minmax(0,1fr)}
+
+  /* phones: an app screen. Picture on top with the audio player tucked in its corner,
+     timeline under it, and Mix / Clip taking turns in the thumb zone at the bottom. */
+  @media (max-width:700px){
+    header{padding:calc(10px + env(safe-area-inset-top)) 12px 10px;gap:8px;flex-wrap:nowrap}
+    .mark{font-size:19px;margin-right:auto}
+    .desk{display:none !important}
+    .mob-actions{display:flex}
+    .mob-actions button{padding:8px 11px}
+    .long{display:none} .short{display:inline}
+    dialog{margin:auto 0 0;width:100%;max-width:100%;max-height:85dvh;border-radius:14px 14px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+    .share-opt{flex-wrap:wrap}
+    .share-opt .acts{width:100%}
+    .share-opt .acts button{flex:1;padding:11px}
+
+    body:not(.watch){height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+    body:not(.watch) main{flex:1;min-height:0;display:flex;flex-direction:column;padding:0;gap:0;position:relative;width:100%}
+    body:not(.watch) .stage,body:not(.watch) .side{display:contents}
+    body:not(.watch) #videoScreen{order:1;flex:none;border-radius:0}
+    body:not(.watch) #audioScreen{position:absolute;top:8px;right:8px;width:34%;z-index:6;border-radius:4px;box-shadow:0 6px 20px #000c;outline:1px solid #ffffff26}
+    body:not(.watch) #audioScreen .vname,body:not(.watch) #audioScreen .empty{display:none}
+    body.no-audio #audioScreen{display:none}
+    body:not(.watch) .editor-deck{order:2;border-radius:0;padding:8px 12px 10px}
+    body:not(.watch) .tabs{order:3;display:flex;gap:6px;padding:6px 12px;background:var(--ground)}
+    body:not(.watch) .console,body:not(.watch) #selPanel{order:4;flex:1;min-height:0;overflow:auto;border-radius:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom))}
+    main[data-tab=mix] #selPanel,main[data-tab=clip] .console{display:none}
+    .keys-box{display:none}
+
+    .tabs button{flex:1;background:none;color:var(--dim);padding:8px}
+    .tabs button[aria-selected=true]{background:var(--rail);color:var(--light)}
+
+    .transport{flex-wrap:nowrap;gap:6px;margin-bottom:8px}
+    .transport button{padding:8px 10px}
+    .transport .play{min-width:68px}
+    .pre,#zoomIn,#zoomOut{display:none}
+    .zoom{margin-left:0}
+    .tc{font-size:18px;margin:0 auto 0 4px}
+    .tc small{display:none}
+    .tl{grid-template-columns:minmax(0,1fr)}
+    .heads{display:none}
+    .view{grid-template-rows:24px 64px 54px}
+
+    /* horizontal faders: a thumb swipes sideways */
+    .console{display:flex;flex-direction:column;gap:12px}
+    .strip{grid-template-columns:52px minmax(0,1fr) 34px auto;grid-template-areas:"name slot out mute";align-items:center;justify-items:stretch;gap:10px}
+    .strip .name{grid-area:name} .strip .slot{grid-area:slot} .strip .mute{grid-area:mute}
+    .strip output{grid-area:out;font-size:17px;text-align:right}
+    .slot{width:auto;height:44px;background:none}
+    .slot::before{display:none}
+    .fader{position:static;transform:none;width:100%;height:44px;margin:0}
+    .moves{grid-template-columns:1fr 1fr auto;border-left:0;padding:12px 0 0;border-top:1px solid var(--rail)}
+    .sel-row .sep{display:none}
+    .move-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+    .move-row .lbl{grid-column:1/-1}
+    .move-row #splitBtn{grid-column:span 2}
+    .move-row #deleteBtn{grid-column:span 2}
     .sel-head{flex-wrap:wrap}
+
+    body.watch main{padding:0 0 24px;gap:12px}
+    body.watch #videoScreen{border-radius:0}
+    body.watch #audioScreen{top:8px;right:8px;width:34%}
+    body.watch .watch-title{padding:0 16px}
+    body.watch .watchbar{margin:0 12px}
   }
   @media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 </style>
@@ -190,12 +288,46 @@
 <body>
 <header>
   <div class="mark">Rescorer</div>
-  <form class="link" id="addVideoForm"><span class="dot" style="background:var(--video)"></span><input id="videoUrl" placeholder="Video — paste a YouTube link" spellcheck="false" aria-label="Video YouTube link"><button>Add video</button></form>
-  <form class="link" id="addAudioForm"><span class="dot" style="background:var(--audio)"></span><input id="audioUrl" placeholder="Audio — paste a YouTube link" spellcheck="false" aria-label="Audio YouTube link"><button>Add audio</button></form>
-  <button id="saveBtn" title="Save this edit (Ctrl/Cmd + S)">Save</button>
-  <button class="quiet" id="savesBtn">Saved edits</button>
-  <button class="quiet" id="shareBtn" title="Copy a link that reopens this exact edit">Copy link</button>
+  <form class="link desk editor-only" id="addVideoForm"><span class="dot" style="background:var(--video)"></span><input id="videoUrl" placeholder="Video — paste a YouTube link" spellcheck="false" aria-label="Video YouTube link"><button>Add video</button></form>
+  <form class="link desk editor-only" id="addAudioForm"><span class="dot" style="background:var(--audio)"></span><input id="audioUrl" placeholder="Audio — paste a YouTube link" spellcheck="false" aria-label="Audio YouTube link"><button>Add audio</button></form>
+  <button class="desk editor-only" id="saveBtn" title="Save this edit (Ctrl/Cmd + S)">Save</button>
+  <button class="quiet desk editor-only" id="savesBtn">Saved edits</button>
+  <button class="quiet desk editor-only" id="shareBtn" title="Get links to share this edit">Share</button>
+  <span class="mob-actions editor-only">
+    <button class="quiet" id="mSaves">Saves</button>
+    <button class="quiet" id="mShare">Share</button>
+    <button class="go" id="mAdd">Add clip</button>
+  </span>
+  <button class="go watch-only" id="wEditTop">Open in editor</button>
 </header>
+
+<dialog id="shareDlg" aria-labelledby="shareTitle">
+  <div class="dlg-head">
+    <h2 id="shareTitle">Share this edit</h2>
+    <button class="quiet" data-close>Close</button>
+  </div>
+  <div class="share-opt">
+    <div class="share-txt"><b>Watch link</b><span>Opens the finished edit, ready to play.</span></div>
+    <div class="acts"><button data-share="watch" data-act="copy">Copy</button><button class="send" data-share="watch" data-act="send">Share…</button></div>
+  </div>
+  <div class="share-opt">
+    <div class="share-txt"><b>Edit link</b><span>Opens a copy they can change in the editor.</span></div>
+    <div class="acts"><button data-share="edit" data-act="copy">Copy</button><button class="send" data-share="edit" data-act="send">Share…</button></div>
+  </div>
+  <p class="note">The whole edit lives inside the link, so nothing gets uploaded. Clips play from YouTube.</p>
+</dialog>
+
+<dialog id="addDlg" aria-labelledby="addTitle">
+  <div class="dlg-head">
+    <h2 id="addTitle">Add a clip</h2>
+    <button class="quiet" data-close>Close</button>
+  </div>
+  <input class="field wide" id="addUrl" placeholder="Paste a YouTube link" spellcheck="false" aria-label="YouTube link" inputmode="url">
+  <div class="add-acts">
+    <button class="add-v" id="addAsVideo"><span class="dot" style="background:var(--video)"></span>Add as video</button>
+    <button class="add-a" id="addAsAudio"><span class="dot" style="background:var(--audio)"></span>Add as audio</button>
+  </div>
+</dialog>
 
 <dialog id="savesDlg" aria-labelledby="savesTitle">
   <div class="dlg-head">
@@ -209,9 +341,10 @@
   <ul class="saves" id="savesList"></ul>
 </dialog>
 
-<main>
+<main id="main" data-tab="mix">
+  <h1 class="watch-title watch-only" id="watchTitle"></h1>
   <section class="stage">
-    <div class="screen">
+    <div class="screen" id="videoScreen">
       <div class="stack" id="videoStack"></div>
       <div class="empty" id="videoEmpty">Add a video link above</div>
       <div class="streamer" id="streamer"></div>
@@ -219,12 +352,12 @@
       <span class="vname video" id="videoName">Video</span>
     </div>
     <div class="side">
-      <div class="screen">
+      <div class="screen" id="audioScreen">
         <div class="stack" id="audioStack"></div>
         <div class="empty" id="audioEmpty">Add an audio link above</div>
         <span class="vname audio" id="audioName">Audio</span>
       </div>
-      <div class="console">
+      <div class="console editor-only">
         <div class="strip video">
           <output id="svOut" class="num"></output>
           <div class="slot"><input type="range" class="fader" id="sv" min="0" max="100" step="1" aria-label="Video volume"></div>
@@ -246,14 +379,20 @@
     </div>
   </section>
 
-  <section class="deck">
+  <div class="watchbar watch-only">
+    <button class="go" id="wPlay">Play</button>
+    <input type="range" id="wSeek" min="0" max="1000" value="0" step="1" aria-label="Position in the edit">
+    <span class="num wtime" id="wTime">0:00 / 0:00</span>
+  </div>
+
+  <section class="deck editor-deck editor-only">
     <div class="transport">
       <button class="go play" id="playBtn">Play</button>
-      <button id="cueBtn" title="Jump to just before the hit and play (C)">Play from hit</button>
+      <button id="cueBtn" title="Jump to just before the hit and play (C)"><span class="long">Play from hit</span><span class="short">From hit</span></button>
       <span class="pre"><label class="lbl" for="preroll">Pre-roll</label><input class="field num" id="preroll" type="number" min="0" step="0.5"></span>
       <span class="tc num"><span id="tcNow">0:00.00</span> <small>/ <span id="tcEnd">0:00</span></small></span>
-      <button class="quiet" id="undoBtn" title="Undo (Ctrl/Cmd + Z)" disabled>Undo</button>
-      <button class="quiet" id="redoBtn" title="Redo (Shift + Ctrl/Cmd + Z)" disabled>Redo</button>
+      <button class="quiet" id="undoBtn" title="Undo (Ctrl/Cmd + Z)" aria-label="Undo" disabled><span class="long">Undo</span><span class="short">↶</span></button>
+      <button class="quiet" id="redoBtn" title="Redo (Shift + Ctrl/Cmd + Z)" aria-label="Redo" disabled><span class="long">Redo</span><span class="short">↷</span></button>
       <div class="zoom">
         <button class="sq" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">−</button>
         <button class="sq" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
@@ -276,7 +415,12 @@
     </div>
   </section>
 
-  <section class="deck selp" id="selPanel">
+  <nav class="tabs editor-only" role="tablist" aria-label="Panels">
+    <button role="tab" data-tab="mix" aria-selected="true">Mix</button>
+    <button role="tab" data-tab="clip" aria-selected="false">Clip</button>
+  </nav>
+
+  <section class="deck selp editor-only" id="selPanel">
     <div class="sel-head">
       <span class="kind" id="selKind"></span>
       <h2 id="selTitle">Click a clip on the timeline</h2>
@@ -290,19 +434,19 @@
       <span class="sep"></span>
       <button class="go" id="alignBtn" title="Move this clip so its hit lands on the nearest hit on the other track (H)">Line up with nearest hit</button>
     </div>
-    <div class="sel-row">
+    <div class="sel-row move-row">
       <span class="lbl">Move</span>
-      <button data-n="-0.5" title="Shift + ←">0.5s earlier</button>
-      <button data-n="-0.05" title="←">0.05s earlier</button>
-      <button data-n="0.05" title="→">0.05s later</button>
-      <button data-n="0.5" title="Shift + →">0.5s later</button>
+      <button data-n="-0.5" title="Shift + ←" aria-label="0.5s earlier"><span class="long">0.5s earlier</span><span class="short">−0.5s</span></button>
+      <button data-n="-0.05" title="←" aria-label="0.05s earlier"><span class="long">0.05s earlier</span><span class="short">−0.05</span></button>
+      <button data-n="0.05" title="→" aria-label="0.05s later"><span class="long">0.05s later</span><span class="short">+0.05</span></button>
+      <button data-n="0.5" title="Shift + →" aria-label="0.5s later"><span class="long">0.5s later</span><span class="short">+0.5s</span></button>
       <span class="sep"></span>
       <button id="splitBtn" title="Cut the clip in two at the playhead (X)">Split at playhead</button>
       <button class="quiet" id="deleteBtn" title="Delete the clip (Delete)">Delete clip</button>
     </div>
   </section>
 
-  <details class="keys-box">
+  <details class="keys-box editor-only">
     <summary>Keyboard shortcuts</summary>
     <dl class="keys">
       <div><dt><kbd>Space</kbd></dt><dd>Play or pause</dd></div>
@@ -436,21 +580,50 @@
     if (/^[\w-]{11}$/.test(o.a || '')) S.clips.push({ id: uid(), k: 'v', y: o.a, s: ss, i: 0, d: null, c: sc || null, x: xs });
     if (/^[\w-]{11}$/.test(o.b || '')) S.clips.push({ id: uid(), k: 'a', y: o.b, s: gs, i: 0, d: null, c: gc || null, x: xg });
   }
+  // links: the edit is squeezed (deflate) into the part after #, so nothing is stored on a server
   const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
-  let saveTimer;
+  const bytesTo64 = b => { let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const bytesFrom64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
+  const canZip = 'CompressionStream' in window && 'DecompressionStream' in window;
+  async function encodeEdit(obj) {
+    const json = JSON.stringify(obj);
+    if (!canZip) return b64e(json);
+    const zipped = new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return 'z' + bytesTo64(new Uint8Array(await new Response(zipped).arrayBuffer()));
+  }
+  async function decodeEdit(s) {
+    s = decodeURIComponent(s);
+    if (s[0] !== 'z') return JSON.parse(b64d(s)); // older, uncompressed links
+    const raw = new Blob([bytesFrom64(s.slice(1))]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return JSON.parse(await new Response(raw).text());
+  }
+  let saveTimer, mode = 'edit';
   function save() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
+    if (mode === 'watch') return; // watching someone's edit never touches your own work
+    saveTimer = setTimeout(async () => {
       const snap = pack(), json = JSON.stringify(snap);
       try { localStorage.setItem('rescorer', json); } catch {}
-      history.replaceState(null, '', '#' + b64e(json));
       checkpoint(snap);
+      try { history.replaceState(null, '', '#' + await encodeEdit(snap)); } catch {}
     }, 300);
   }
-  function restore() {
-    try { if (location.hash.length > 1) return unpack(JSON.parse(b64d(location.hash.slice(1)))); } catch {}
-    try { unpack(JSON.parse(localStorage.getItem('rescorer'))); } catch {}
+  const hasClips = o => !!o && ((o.cl && o.cl.length) || o.a || o.b);
+  // Opening someone else's link replaces what's on screen; keep your own work in Saved edits first.
+  function keepLocalWork(incoming) {
+    let local = null;
+    try { local = JSON.parse(localStorage.getItem('rescorer')); } catch {}
+    if (!hasClips(local)) return;
+    const strip = o => { const { n, vol, ...rest } = o || {}; return JSON.stringify(rest); };
+    if (incoming && strip(local) === strip(incoming)) return;
+    const list = readSaves();
+    if (list.some(s => strip(s.data) === strip(local))) return; // already saved
+    list.unshift({
+      id: Date.now().toString(36), name: 'Your edit before opening a link', at: Date.now(), scene: '', song: '',
+      thumb: (local.cl && local.cl[0] && local.cl[0][2]) || local.a || local.b, data: local
+    });
+    if (writeSaves(list)) toast('Your previous edit is in Saved edits');
   }
 
   // ---------- undo / redo (edits only; fader levels aren't steps) ----------
@@ -783,7 +956,7 @@
     commitChunk(); updatePlayBtn();
   }
   const togglePlay = () => clock.playing ? pause() : play();
-  function updatePlayBtn() { $('playBtn').textContent = clock.playing ? 'Pause' : 'Play'; }
+  function updatePlayBtn() { const t = clock.playing ? 'Pause' : 'Play'; $('playBtn').textContent = t; $('wPlay').textContent = t; }
   let lastPreview = 0;
   function seekProject(T) {
     T = clamp(T, 0, projectEnd() || 0);
@@ -980,7 +1153,8 @@
     }
     const anyV = S.clips.some(c => c.k === 'v');
     $('videoEmpty').hidden = !!vid;
-    const msg = anyV ? 'No video at the playhead' : 'Add a video link above';
+    const msg = anyV ? 'No video at the playhead' : mode === 'watch' ? '' : 'Add a video clip to start';
+    document.body.classList.toggle('no-audio', !S.clips.some(c => c.k === 'a'));
     if ($('videoEmpty').textContent !== msg) $('videoEmpty').textContent = msg;
     $('audioEmpty').hidden = !!aud;
     const vn = vid ? titleOf(vid) : 'Video', an = aud ? titleOf(aud) : 'Audio';
@@ -1059,6 +1233,7 @@
     e.stopPropagation();
     const c = byId(id); if (!c) return;
     select(id);
+    if (matchMedia('(max-width:700px)').matches) setTab('clip');
     const cl = e.target.classList;
     const kind = cl.contains('hit') ? 'hit' : cl.contains('l') ? 'trimL' : cl.contains('r') ? 'trimR' : 'move';
     if (kind !== 'move' && !known(c)) return;
@@ -1067,14 +1242,25 @@
     if (kind === 'move') R(c).el.classList.add('dragging');
   }
   function startScrub(e) {
+    // on a touchscreen, a finger on an empty lane swipes the timeline; a tap moves the playhead
+    if (e.pointerType === 'touch' && e.currentTarget.id !== 'ruler') {
+      drag = { kind: 'pan', x0: localX(e), vs0: vs, moved: false };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
     drag = { kind: 'scrub' };
     e.currentTarget.setPointerCapture(e.pointerId);
     seekProject(tAt(localX(e)));
   }
   function onMove(e) {
-    if (!drag) return;
+    if (!drag || drag.kind === 'pinch') return;
     const x = localX(e);
     if (drag.kind === 'scrub') return seekProject(tAt(x));
+    if (drag.kind === 'pan') {
+      if (Math.abs(x - drag.x0) > 4) drag.moved = true;
+      vs = drag.vs0 - (x - drag.x0) / pps; clampView();
+      return;
+    }
     const c = byId(drag.id); if (!c) return;
     if (Math.abs(x - drag.x0) > 2) drag.moved = true;
     if (!drag.moved) return;
@@ -1104,8 +1290,9 @@
     }
     showSnap(s); resyncAll(); renderSel();
   }
-  function onUp() {
-    if (!drag) return;
+  function onUp(e) {
+    if (!drag || drag.kind === 'pinch') return;
+    if (drag.kind === 'pan') { if (!drag.moved && e && e.type === 'pointerup') seekProject(tAt(localX(e))); drag = null; return; }
     if (drag.kind !== 'scrub' && drag.moved) save();
     document.querySelectorAll('.clip.dragging').forEach(c => c.classList.remove('dragging'));
     showSnap(null); drag = null;
@@ -1123,6 +1310,40 @@
       e.preventDefault(); vs += (e.shiftKey ? e.deltaY || e.deltaX : e.deltaX) / pps; clampView();
     }
   }, { passive: false });
+  // two fingers: pinch to zoom, slide to pan (the time under your fingers stays put)
+  const touches = new Map();
+  const pinchState = () => {
+    const [a, b] = [...touches.values()];
+    return { dist: Math.max(20, Math.abs(a - b)), mid: (a + b) / 2 };
+  };
+  view.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+    touches.set(e.pointerId, localX(e));
+    if (touches.size === 2) {
+      e.stopPropagation(); // the second finger belongs to the pinch, not to a clip under it
+      if (drag && drag.id && drag.kind !== 'move' && drag.kind !== 'hit') { const c = byId(drag.id); if (c) { c.s = drag.s0; c.i = drag.i0; c.d = drag.len0; } }
+      if (drag && drag.id && drag.kind === 'move') { const c = byId(drag.id); if (c) c.s = drag.s0; } // the first finger had started a clip drag: put it back
+      document.querySelectorAll('.clip.dragging').forEach(c => c.classList.remove('dragging'));
+      const p = pinchState();
+      drag = { kind: 'pinch', dist0: p.dist, pps0: pps, t0: tAt(p.mid) };
+      showSnap(null);
+    }
+  }, true);
+  view.addEventListener('pointermove', e => {
+    if (!touches.has(e.pointerId)) return;
+    touches.set(e.pointerId, localX(e));
+    if (!drag || drag.kind !== 'pinch' || touches.size < 2) return;
+    const p = pinchState(), end = projectEnd() || 60;
+    pps = clamp(drag.pps0 * p.dist / drag.dist0, viewW() / (end * 1.5), 600);
+    vs = drag.t0 - p.mid / pps; userZoomed = true; clampView();
+  }, true);
+  const liftTouch = e => {
+    if (!touches.delete(e.pointerId)) return;
+    if (drag && drag.kind === 'pinch' && touches.size < 2) drag = null;
+  };
+  view.addEventListener('pointerup', liftTouch, true);
+  view.addEventListener('pointercancel', liftTouch, true);
+
   $('zoomIn').onclick = () => zoomAt(1.6, zoomMid());
   $('zoomOut').onclick = () => zoomAt(1 / 1.6, zoomMid());
   $('fitBtn').onclick = () => { userZoomed = false; fit(); };
@@ -1130,15 +1351,88 @@
   // ---------- wiring ----------
   $('addVideoForm').addEventListener('submit', e => { e.preventDefault(); addClip('v', 'videoUrl'); });
   $('addAudioForm').addEventListener('submit', e => { e.preventDefault(); addClip('a', 'audioUrl'); });
-  $('shareBtn').onclick = async () => {
+  // ---------- sharing ----------
+  const links = {};
+  function editName() {
+    const cur = currentSave && readSaves().find(s => s.id === currentSave);
+    return cur ? cur.name : defaultName();
+  }
+  async function openShare() {
+    if (!S.clips.length) return toast('Add a clip before sharing');
     commitChunk();
-    const url = location.href.split('#')[0] + '#' + b64e(JSON.stringify(pack()));
-    try { await navigator.clipboard.writeText(url); toast('Link copied'); } catch { prompt('Copy this link:', url); }
-  };
+    const btns = document.querySelectorAll('#shareDlg [data-share]');
+    btns.forEach(b => b.disabled = true);
+    $('shareDlg').showModal();
+    // build both links up front so Copy works straight from the tap
+    const data = await encodeEdit({ ...pack(), n: editName() }), base = location.href.split('#')[0];
+    links.watch = base + '#watch=' + data;
+    links.edit = base + '#edit=' + data;
+    btns.forEach(b => b.disabled = false);
+  }
+  document.querySelectorAll('#shareDlg [data-share]').forEach(b => b.onclick = async () => {
+    const which = b.dataset.share, url = links[which];
+    if (!url) return;
+    if (b.dataset.act === 'send') {
+      try { await navigator.share({ title: editName() + ' (Rescorer)', url }); } catch {}
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); toast(which === 'watch' ? 'Watch link copied' : 'Edit link copied'); }
+    catch { prompt('Copy this link:', url); }
+  });
+  if (!navigator.share) document.querySelectorAll('#shareDlg .send').forEach(b => b.hidden = true);
+  $('shareBtn').onclick = openShare;
+  $('mShare').onclick = openShare;
+
+  // ---------- adding clips on a phone ----------
+  $('mAdd').onclick = () => { $('addUrl').value = ''; $('addDlg').showModal(); };
+  const addFromSheet = k => { if ($('addUrl').value.trim() && parseYT($('addUrl').value)) { addClip(k, 'addUrl'); $('addDlg').close(); } else addClip(k, 'addUrl'); };
+  $('addAsVideo').onclick = () => addFromSheet('v');
+  $('addAsAudio').onclick = () => addFromSheet('a');
+
+  // ---------- dialogs ----------
+  document.querySelectorAll('dialog').forEach(d => {
+    d.addEventListener('click', e => { if (e.target === d) d.close(); }); // tap outside closes
+    d.querySelectorAll('[data-close]').forEach(b => b.onclick = () => d.close());
+  });
+
+  // ---------- Mix / Clip tabs (phones) ----------
+  function setTab(t) {
+    $('main').dataset.tab = t;
+    document.querySelectorAll('.tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+  }
+  document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+  // ---------- watch view ----------
+  function setMode(m) {
+    mode = m;
+    document.body.classList.toggle('watch', m === 'watch');
+    updatePlayBtn();
+  }
+  $('wPlay').onclick = togglePlay;
+  let wSeeking = false;
+  $('wSeek').addEventListener('input', e => { wSeeking = true; seekProject(+e.target.value / 1000 * projectEnd()); });
+  $('wSeek').addEventListener('change', () => { wSeeking = false; });
+  function openInEditor() {
+    pause();
+    keepLocalWork(pack());
+    setMode('edit'); fit(); save();
+    toast('This is your copy now. Changes save in this browser.');
+  }
+  $('wEditTop').onclick = openInEditor;
+  function watchFrame() {
+    requestAnimationFrame(watchFrame);
+    if (mode !== 'watch') return;
+    const T = getT(), end = projectEnd();
+    if (!wSeeking) $('wSeek').value = end ? Math.round(T / end * 1000) : 0;
+    const txt = fmt(T).replace(/\.\d+$/, '') + ' / ' + fmt(end).replace(/\.\d+$/, '');
+    if ($('wTime').textContent !== txt) $('wTime').textContent = txt;
+  }
+
   $('saveBtn').onclick = () => saveEdit('');
-  $('savesBtn').onclick = () => { renderSaves(); $('saveName').value = ''; $('saveName').placeholder = defaultName(); $('savesDlg').showModal(); };
+  const openSaves = () => { renderSaves(); $('saveName').value = ''; $('saveName').placeholder = defaultName(); $('savesDlg').showModal(); };
+  $('savesBtn').onclick = openSaves;
+  $('mSaves').onclick = openSaves;
   $('closeSaves').onclick = () => $('savesDlg').close();
-  $('savesDlg').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
   $('saveForm').addEventListener('submit', e => { e.preventDefault(); saveEdit($('saveName').value); $('saveName').value = ''; });
   $('undoBtn').onclick = () => stepUndo(-1);
   $('redoBtn').onclick = () => stepUndo(1);
@@ -1176,7 +1470,8 @@
     const mod = e.metaKey || e.ctrlKey;
     if (mod && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); return saveEdit(''); }
     if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
-    if ($('savesDlg').open) return;
+    if (document.querySelector('dialog[open]')) return;
+    if (mode === 'watch') { if (e.key === ' ' && !mod) { e.preventDefault(); togglePlay(); } return; }
     if (mod && !e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); return stepUndo(e.shiftKey ? 1 : -1); }
     if (mod && !e.altKey && e.key.toLowerCase() === 'y') { e.preventDefault(); return stepUndo(1); }
     if (mod || e.altKey) return;
@@ -1195,13 +1490,38 @@
   });
 
   // ---------- boot ----------
-  restore();
-  syncPlayers();
-  renderMix(); select(null); updatePlayBtn();
-  $('preroll').value = S.preroll;
-  $('autoBtn').classList.toggle('on', S.autoOn);
-  checkpoint(pack());
-  requestAnimationFrame(frame);
+  // #watch=… opens the finished edit, #edit=… opens a copy in the editor,
+  // a bare #… is this browser's own autosave address (or an older shared link).
+  (async () => {
+    const h = location.hash.slice(1);
+    let incoming = null, kind = '';
+    try {
+      if (h.startsWith('watch=')) { kind = 'watch'; incoming = await decodeEdit(h.slice(6)); }
+      else if (h.startsWith('edit=')) { kind = 'shared'; incoming = await decodeEdit(h.slice(5)); }
+      else if (h) { kind = 'hash'; incoming = await decodeEdit(h); }
+    } catch { incoming = null; toast("That link couldn't be opened. It may have been cut off when it was copied."); }
+    if (kind === 'watch' && incoming) {
+      setMode('watch');
+      unpack(incoming); S.autoOn = true;
+      const name = incoming.n || 'Untitled edit';
+      $('watchTitle').textContent = name;
+      document.title = name + ' (Rescorer)';
+    } else if (incoming) {
+      keepLocalWork(incoming);
+      unpack(incoming);
+      if (kind === 'shared') toast('Opened a shared edit. Changes save in this browser.');
+    } else {
+      try { unpack(JSON.parse(localStorage.getItem('rescorer'))); } catch {}
+    }
+    syncPlayers();
+    renderMix(); select(null); updatePlayBtn();
+    $('preroll').value = S.preroll;
+    $('autoBtn').classList.toggle('on', S.autoOn);
+    checkpoint(pack());
+    if (mode !== 'watch') save(); // rewrite the address to this browser's own autosave
+    requestAnimationFrame(frame);
+    requestAnimationFrame(watchFrame);
+  })();
 })();
 </script>
 </body>
